@@ -59,6 +59,7 @@
         .bg-csv { background-color: #4666ff; color: white; }
         .bg-pdf { background-color: #dc3545; color: white; }
         .bg-word { background-color: #000000; color: white; }
+        .bg-excel { background-color: #217346; color: white; }
         .bg-email { background-color: #ffffff; color: #dc3545; border: 1px solid #dc3545; }
         .bg-guide { background-color: #cfb137; color: #000; }
         .bg-clear { background-color: #ffffff; color: #666; border: 1px solid #ddd; }
@@ -237,32 +238,37 @@
 
             <!-- DASHBOARD BUTTONS -->
             <div class="row g-3 mb-4">
-                <div class="col-6 col-md-2">
+                <div class="col-6 col-md-3">
                     <button class="btn-tile bg-csv" onclick="downloadSelectedCSV()">
                         <i class="bi bi-filetype-csv"></i> CSV Report
                     </button>
                 </div>
-                <div class="col-6 col-md-2">
+                <div class="col-6 col-md-3">
                     <button class="btn-tile bg-pdf" onclick="generateHashPDF()">
                         <i class="bi bi-file-earmark-pdf-fill"></i> Hash PDF
                     </button>
                 </div>
-                <div class="col-6 col-md-2">
+                <div class="col-6 col-md-3">
                     <button class="btn-tile bg-word" onclick="generateHashWord()">
                         <i class="bi bi-file-word-fill"></i> Hash Word
                     </button>
                 </div>
-                <div class="col-6 col-md-2">
+                <div class="col-6 col-md-3">
+                    <button class="btn-tile bg-excel" onclick="generateExcelReport()">
+                        <i class="bi bi-file-earmark-excel-fill"></i> Excel Report
+                    </button>
+                </div>
+                <div class="col-6 col-md-3">
                     <button class="btn-tile bg-email" onclick="generateEmailReport()">
                         <i class="bi bi-envelope-paper"></i> Email PDF
                     </button>
                 </div>
-                <div class="col-6 col-md-2">
+                <div class="col-6 col-md-3">
                     <button class="btn-tile bg-guide" onclick="showGmailGuide()">
                         <i class="bi bi-info-circle-fill"></i> Guide
                     </button>
                 </div>
-                <div class="col-6 col-md-2">
+                <div class="col-6 col-md-3">
                     <button class="btn-tile bg-clear" onclick="clearTable()">
                         <i class="bi bi-trash"></i> Clear
                     </button>
@@ -287,9 +293,10 @@
                             <tr class="table-header">
                                 <th width="5%" class="ps-4"><input type="checkbox" id="selectAll" onclick="toggleAll(this)"></th>
                                 <th width="5%">#</th>
-                                <th width="30%">Filename</th>
-                                <th width="20%">MD5 Hash</th>
-                                <th width="40%">SHA-256 (Section 63 BSA Compliant)</th>
+                                <th width="25%">Filename</th>
+                                <th width="15%">MD5 Hash</th>
+                                <th width="25%">SHA-256 (Section 63 BSA Compliant)</th>
+                                <th width="25%">SHA-3</th>
                             </tr>
                         </thead>
                         <tbody id="hashTableBody" style="background: white;"></tbody>
@@ -497,6 +504,7 @@
                         </td>
                         <td class="hash-font md5">Calculating...</td>
                         <td class="hash-font sha256">Calculating...</td>
+                        <td class="hash-font sha3">Calculating...</td>
                     </tr>
                 `);
                 fileQueue.push({ file, rowId });
@@ -519,6 +527,9 @@
                     if (row) {
                         row.querySelector('.md5').innerText = CryptoJS.MD5(wordArray).toString();
                         row.querySelector('.sha256').innerText = CryptoJS.SHA256(wordArray).toString();
+                        const sha3 = CryptoJS.SHA3(wordArray).toString();
+                        row.querySelector('.sha3').innerText = sha3;
+                        console.log(`SHA-3 calculated for ${file.name}: ${sha3}`);
                     }
                     processQueue();
                 }, 50);
@@ -715,7 +726,8 @@
                     rows.push([
                         cells[1].innerText,
                         cells[2].innerText,
-                        cells[4].innerText
+                        cells[4].innerText,
+                        cells[5].innerText
                     ]);
                 }
             });
@@ -727,7 +739,7 @@
 
             doc.autoTable({
                 startY: 70,
-                head: [['#', 'Filename', 'SHA-256']],
+                head: [['#', 'Filename', 'SHA-256', 'SHA-3']],
                 body: rows,
                 theme: 'grid',
                 headStyles: { 
@@ -741,8 +753,9 @@
                 },
                 columnStyles: {
                     0: { cellWidth: 40 },
-                    1: { cellWidth: 300 },
-                    2: { cellWidth: 450, font: 'courier' }
+                    1: { cellWidth: 280 },
+                    2: { cellWidth: 250, font: 'courier' },
+                    3: { cellWidth: 250, font: 'courier' }
                 }
             });
 
@@ -782,6 +795,13 @@
                             alignment: AlignmentType.CENTER
                         })],
                         shading: { fill: "003366" }
+                    }),
+                    new TableCell({
+                        children: [new Paragraph({ 
+                            children: [new TextRun({ text: "SHA-3", bold: true, color: "FFFFFF" })],
+                            alignment: AlignmentType.CENTER
+                        })],
+                        shading: { fill: "003366" }
                     })
                 ]
             }));
@@ -795,6 +815,9 @@
                             new TableCell({ children: [new Paragraph(cells[2].innerText)] }),
                             new TableCell({ children: [new Paragraph({ 
                                 children: [new TextRun({ text: cells[4].innerText, font: "Courier New", size: 18 })]
+                            })] }),
+                            new TableCell({ children: [new Paragraph({ 
+                                children: [new TextRun({ text: cells[5].innerText, font: "Courier New", size: 18 })]
                             })] })
                         ]
                     }));
@@ -837,7 +860,7 @@
 
         // ===== DOWNLOAD CSV =====
         function downloadSelectedCSV() {
-            let csv = "#,Subject,From,To,Date,Originating IP,DKIM,SHA-256\n";
+            let csv = "#,Subject,From,To,Date,Originating IP,DKIM,SHA-256,SHA-3\n";
             
             let counter = 1;
             const promises = [];
@@ -848,7 +871,7 @@
                     promises.push(
                         readFile(tr.fileData).then(text => {
                             const eml = parseEml(text);
-                            return `${counter++},"${eml.subject}","${eml.from}","${eml.to}","${eml.date}","${eml.serverIP}","${eml.dkim}","${cells[4].innerText}"\n`;
+                            return `${counter++},"${eml.subject}","${eml.from}","${eml.to}","${eml.date}","${eml.serverIP}","${eml.dkim}","${cells[4].innerText}","${cells[5].innerText}"\n`;
                         })
                     );
                 }
@@ -862,6 +885,40 @@
                 a.download = "Email_Report.csv";
                 a.click();
             });
+        }
+
+        // ===== GENERATE EXCEL REPORT =====
+        function generateExcelReport() {
+            const rows = [];
+            document.querySelectorAll("#hashTableBody tr").forEach(tr => {
+                if (tr.querySelector('input').checked) {
+                    const cells = tr.querySelectorAll('td');
+                    rows.push([
+                        cells[1].innerText,
+                        cells[2].innerText,
+                        cells[3].innerText,
+                        cells[4].innerText,
+                        cells[5].innerText
+                    ]);
+                }
+            });
+
+            if (rows.length === 0) {
+                alert("Please select files to include in report.");
+                return;
+            }
+
+            let html = '<table><tr><th>#</th><th>Filename</th><th>MD5</th><th>SHA-256</th><th>SHA-3</th></tr>';
+            rows.forEach(r => {
+                html += `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td></tr>`;
+            });
+            html += '</table>';
+
+            const blob = new Blob(['\ufeff', html], { type: 'application/vnd.ms-excel' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = "Hash_Report.xls";
+            a.click();
         }
 
         // ===== UTILITY FUNCTIONS =====
